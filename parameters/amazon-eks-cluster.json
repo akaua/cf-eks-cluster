@@ -1,0 +1,10 @@
+[
+    {
+      "ParameterKey": "ClusterName",
+      "ParameterValue": "eks-cluster"
+    }, 
+    {
+      "ParameterKey": "NodeGroupName",
+      "ParameterValue": "eks-cluster-node-group-1"
+    }
+]
