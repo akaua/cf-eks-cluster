@@ -187,11 +187,18 @@ Resources:
         - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
         - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
   NodeSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for all nodes in the cluster
+      SecurityGroupIngress:
+        -   Description: Access with Session Manager
+            FromPort: 443
+            IpProtocol: tcp
+            CidrIp: 0.0.0.0/0
+            ToPort: 443
       VpcId: 
         Fn::ImportValue:
           !Join [ ':', [ 'VPCEKSStack', 'VPCID' ] ] 
@@ -303,12 +310,15 @@ Resources:
       Name: !Ref ClusterName
       ResourcesVpcConfig: 
         SecurityGroupIds: 
-          Fn::ImportValue:
+        - Fn::ImportValue:
             !Join [ ':', [ 'VPCEKSStack', 'ControlPlaneSecurityGroup' ] ]     
         SubnetIds: 
-        - Fn::ImportValue:
-            !Join [ ':', [ 'VPCEKSStack', 'List', 'PrivateSubnets' ] ] 
+          - Fn::ImportValue:
+              !Join [ ':', [ 'VPCEKSStack', 'PrivateSubnet01' ] ] 
+          - Fn::ImportValue:
+              !Join [ ':', [ 'VPCEKSStack', 'PrivateSubnet02' ] ] 
       RoleArn: !GetAtt EKSClusterRole.Arn
+      Version: 1.17
 
   NodeGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -335,6 +345,7 @@ Resources:
         PauseTime: PT5M
 
   NodeLaunchConfig:
+    DependsOn: EKSCluster
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       AssociatePublicIpAddress: true
@@ -355,11 +366,70 @@ Resources:
           !Sub |
             #!/bin/bash
             set -o xtrace
+            sudo yum install -y https://s3.${AWS::Region}.amazonaws.com/amazon-ssm-${AWS::Region}/latest/linux_386/amazon-ssm-agent.rpm
             /etc/eks/bootstrap.sh ${ClusterName} ${BootstrapArguments}
             /opt/aws/bin/cfn-signal --exit-code $? \
                      --stack  ${AWS::StackName} \
                      --resource NodeGroup  \
                      --region ${AWS::Region}
+            sudo systemctl enable amazon-ssm-agent
+            sudo systemctl start amazon-ssm-agent
+            sudo systemctl status amazon-ssm-agent
+
+
+## Session Manager Endpoints
+
+  VPCEndpointSSM:
+    Type: AWS::EC2::VPCEndpoint
+    Properties: 
+      PrivateDnsEnabled: true
+      SecurityGroupIds: 
+        - !Ref NodeSecurityGroup
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
+      SubnetIds: 
+        - Fn::ImportValue:
+            !Join [ ':', [ 'VPCEKSStack', 'PrivateSubnet01' ] ] 
+        - Fn::ImportValue:
+            !Join [ ':', [ 'VPCEKSStack', 'PrivateSubnet02' ] ] 
+      VpcId: 
+        Fn::ImportValue:
+          !Join [ ':', [ 'VPCEKSStack', 'VPCID' ] ] 
+      VpcEndpointType: Interface
+
+  VPCEndpointEC2Messages:
+    Type: AWS::EC2::VPCEndpoint
+    Properties: 
+      PrivateDnsEnabled: true
+      SecurityGroupIds: 
+        - !Ref NodeSecurityGroup
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2messages
+      SubnetIds: 
+        - Fn::ImportValue:
+            !Join [ ':', [ 'VPCEKSStack', 'PrivateSubnet01' ] ] 
+        - Fn::ImportValue:
+            !Join [ ':', [ 'VPCEKSStack', 'PrivateSubnet02' ] ] 
+      VpcId: 
+        Fn::ImportValue:
+          !Join [ ':', [ 'VPCEKSStack', 'VPCID' ] ] 
+      VpcEndpointType: Interface
+
+
+  VPCEndpointSSMMessages:
+    Type: AWS::EC2::VPCEndpoint
+    Properties: 
+      PrivateDnsEnabled: true
+      SecurityGroupIds: 
+        - !Ref NodeSecurityGroup
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssmmessages
+      SubnetIds: 
+        - Fn::ImportValue:
+            !Join [ ':', [ 'VPCEKSStack', 'PrivateSubnet01' ] ] 
+        - Fn::ImportValue:
+            !Join [ ':', [ 'VPCEKSStack', 'PrivateSubnet02' ] ] 
+      VpcId: 
+        Fn::ImportValue:
+          !Join [ ':', [ 'VPCEKSStack', 'VPCID' ] ] 
+      VpcEndpointType: Interface
 
 Outputs:
 

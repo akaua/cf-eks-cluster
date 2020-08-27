@@ -29,7 +29,7 @@ def destroy_stack_vpc():
     response_main = client_cloud_formation_main.delete_stack(StackName=stack_name)
 
 
-def destroy_stack_ecs():
+def destroy_stack_eks():
     print '######### Iniciando destruicao de EKS Cluster Stack #########'
     stack_name='EKSClusterStack'
     response = client_cloud_formation_main.delete_stack(StackName=stack_name)
@@ -39,7 +39,7 @@ def destroy_stack_ecs():
 
 
 start()
-destroy_stack_ecs()
+destroy_stack_eks()
 destroy_stack_vpc()
 
 
