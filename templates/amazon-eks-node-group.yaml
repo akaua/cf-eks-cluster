@@ -1,0 +1,86 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: Amazon EKS - Node Group
+
+Parameters:
+  NodeAutoScalingGroupMinSize:
+    Description: Minimum size of Node Group ASG.
+    Type: Number
+    Default: 1
+  NodeAutoScalingGroupMaxSize:
+    Description: Maximum size of Node Group ASG. Set to at least 1 greater than NodeAutoScalingGroupDesiredCapacity.
+    Type: Number
+    Default: 4
+  NodeAutoScalingGroupDesiredCapacity:
+    Description: Desired capacity of Node Group ASG.
+    Type: Number
+    Default: 3
+  NodeVolumeSize:
+    Description: Node volume size
+    Type: Number
+    Default: 20
+  NodeGroupName:
+    Description: Unique identifier for the Node Group.
+    Type: String
+
+Mappings:  
+  ServicePrincipals:
+    aws-cn:
+      ec2: ec2.amazonaws.com.cn
+    aws-us-gov:
+      ec2: ec2.amazonaws.com
+    aws:
+      ec2: ec2.amazonaws.com
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Worker Node Configuration
+        Parameters:
+          - NodeGroupName
+          - NodeAutoScalingGroupMinSize
+          - NodeAutoScalingGroupDesiredCapacity
+          - NodeAutoScalingGroupMaxSize
+          - NodeVolumeSize
+
+Resources:
+  EKSNodegroup:
+    Type: 'AWS::EKS::Nodegroup'
+    Properties:
+      ClusterName: 
+        Fn::ImportValue:
+            !Join [ ':', [ 'EKSClusterStack', 'EksClusterName' ] ] 
+      NodegroupName: !Ref NodeGroupName
+      NodeRole: !GetAtt NodeInstanceRole.Arn
+      DiskSize: !Ref NodeVolumeSize
+      ScalingConfig:
+        MinSize: !Ref NodeAutoScalingGroupMinSize
+        DesiredSize: !Ref NodeAutoScalingGroupDesiredCapacity
+        MaxSize: !Ref NodeAutoScalingGroupMaxSize
+      Labels:
+        Name: !Sub EKS-${NodeGroupName}-Node
+        # !Sub !ImportValue ${ClusterName}-${NodeGroupName}-Node
+      Subnets:
+        - Fn::ImportValue:
+            !Join [ ':', [ 'VPCEKSStack', 'PrivateSubnet01' ] ] 
+        - Fn::ImportValue:
+            !Join [ ':', [ 'VPCEKSStack', 'PrivateSubnet02' ] ] 
+
+  NodeInstanceRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - !FindInMap [ServicePrincipals, !Ref "AWS::Partition", ec2]
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEKS_CNI_Policy"
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+      Path: /

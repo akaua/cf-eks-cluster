@@ -67,7 +67,7 @@ def create_stack_vpc():
             client_cloud_formation_main.describe_stacks(StackName=response['StackId'])
         )
 
-def create_stack_eks():
+def create_stack_eks_cluster():
     stack_name='EKSClusterStack'
     print '######### Iniciando criacao do cluster EKS #########'
 
@@ -117,6 +117,57 @@ def create_stack_eks():
         )
 
 
+def create_stack_eks_node_group():
+    stack_name='EKSNodeGroupStack'
+    print '######### Iniciando criacao do NodeGroup EKS #########'
+
+    try:
+        if _stack_exists(stack_name):
+            print('Updating {}'.format(stack_name))
+            with open('./templates/amazon-eks-node-group.yaml', 'r') as cf_file:
+                cft_template = cf_file.read()
+                with open('./parameters/amazon-eks-node-group.json', 'r') as param_file:
+                    cft_param = json.loads(param_file.read())
+                    response_main = client_cloud_formation_main.update_stack(
+                                StackName=stack_name,
+                                TemplateBody=cft_template,
+                                Parameters=cft_param,
+                                Capabilities=[
+                                    'CAPABILITY_IAM'
+                                ]
+                            )
+            waiter = client_cloud_formation_main.get_waiter('stack_update_complete')
+        else:
+            print('Creating {}'.format(stack_name))
+            with open('./templates/amazon-eks-node-group.yaml', 'r') as cf_file:
+                cft_template = cf_file.read()
+                with open('./parameters/amazon-eks-node-group.json', 'r') as param_file:
+                    cft_param = json.loads(param_file.read())
+                    response_main = client_cloud_formation_main.create_stack(
+                                StackName=stack_name,
+                                TemplateBody=cft_template,
+                                Parameters=cft_param,
+                                Capabilities=[
+                                    'CAPABILITY_IAM'
+                                ],
+                                OnFailure='ROLLBACK'
+                            )
+            waiter = client_cloud_formation_main.get_waiter('stack_create_complete')
+        print("...waiting for stack to be ready...")
+        waiter.wait(StackName=stack_name)
+    except botocore.exceptions.ClientError as ex:
+        error_message = ex.response['Error']['Message']
+        if error_message == 'No updates are to be performed.':
+            print("No changes")
+        else:
+            raise
+    else:
+        print(
+            client_cloud_formation_main.describe_stacks(StackName=response_main['StackId'])
+        )
+
+
 start()
 create_stack_vpc()
-create_stack_eks()
+create_stack_eks_cluster()
+create_stack_eks_node_group()

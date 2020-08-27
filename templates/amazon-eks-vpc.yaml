@@ -271,6 +271,15 @@ Resources:
     Properties:
       GroupDescription: Cluster communication with worker nodes
       VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 1025
+          ToPort: 65535
+          CidrIp: 192.168.0.0/16
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 192.168.0.0/16
 
 Outputs:
 

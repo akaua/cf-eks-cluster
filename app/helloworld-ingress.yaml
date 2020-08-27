@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: "ingress"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/subnets: subnet-0fb7c0c8fa5acc38c,subnet-0e6650a4a527c5fd5
+  labels:
+    app: helloworld
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        backend:
+          serviceName: service-helloworld
+          servicePort: 80

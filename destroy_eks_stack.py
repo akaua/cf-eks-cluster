@@ -29,7 +29,7 @@ def destroy_stack_vpc():
     response_main = client_cloud_formation_main.delete_stack(StackName=stack_name)
 
 
-def destroy_stack_eks():
+def destroy_stack_eks_cluster():
     print '######### Iniciando destruicao de EKS Cluster Stack #########'
     stack_name='EKSClusterStack'
     response = client_cloud_formation_main.delete_stack(StackName=stack_name)
@@ -37,9 +37,18 @@ def destroy_stack_eks():
     verificar_delete_stack_main(stack_name=stack_name)
     print '######### Finalizada destruicao de EKS Cluster com sucesso #########'  
 
+def destroy_stack_eks_node_group():
+    print '######### Iniciando destruicao de EKS Node Group Stack #########'
+    stack_name='EKSNodeGroupStack'
+    response = client_cloud_formation_main.delete_stack(StackName=stack_name)
+    print '######### Verificando se EKS Node Group foi destruido com sucesso #########'   
+    verificar_delete_stack_main(stack_name=stack_name)
+    print '######### Finalizada destruicao de EKS Node Group com sucesso #########'  
+
 
 start()
-destroy_stack_eks()
+destroy_stack_eks_node_group()
+destroy_stack_eks_cluster()
 destroy_stack_vpc()
 
 

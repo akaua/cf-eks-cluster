@@ -1,0 +1,22 @@
+[
+    {
+      "ParameterKey": "NodeAutoScalingGroupMinSize",
+      "ParameterValue": "2"
+    }, 
+    {
+      "ParameterKey": "NodeAutoScalingGroupMaxSize",
+      "ParameterValue": "4"
+    }, 
+    {
+      "ParameterKey": "NodeAutoScalingGroupDesiredCapacity",
+      "ParameterValue": "2"
+    }, 
+    {
+      "ParameterKey": "NodeVolumeSize",
+      "ParameterValue": "20"
+    }, 
+    {
+      "ParameterKey": "NodeGroupName",
+      "ParameterValue": "Group01"
+    }
+]
